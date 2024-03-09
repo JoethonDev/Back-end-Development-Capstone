@@ -1,4 +1,4 @@
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.models import User
 from django.http import HttpResponseRedirect, HttpResponse
 from django.shortcuts import get_object_or_404
@@ -14,7 +14,19 @@ import requests as req
 # Create your views here.
 
 def signup(request):
-    pass
+    error_msg = ''
+    if request.method == 'POST' :
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = User.objects.filter(username=username)
+        if not user :
+            user = User.objects.create_user(username=username, password=password)
+            login(request, user)
+            return HttpResponseRedirect(reverse('index'))
+        else :
+            error_msg = 'user already exist'
+
+    return render(request, 'signup.html', {'form' : SignUpForm, 'message' : error_msg})
 
 
 def index(request):
@@ -23,23 +35,58 @@ def index(request):
 
 def songs(request):
     # songs = {"songs":[]}
-    # return render(request, "songs.html", {"songs": [insert list here]})
-    pass
+    return render(request, "songs.html", {"songs": [{"id":1,"title":"duis faucibus accumsan odio curabitur convallis","lyrics":"Morbi non lectus. Aliquam sit amet diam in magna bibendum imperdiet. Nullam orci pede, venenatis non, sodales sed, tincidunt eu, felis."}]})
+    
 
 
 def photos(request):
-    # photos = []
-    # return render(request, "photos.html", {"photos": photos})
+    photos = [{
+    "id": 1,
+    "pic_url": "http://dummyimage.com/136x100.png/5fa2dd/ffffff",
+    "event_country": "United States",
+    "event_state": "District of Columbia",
+    "event_city": "Washington",
+    "event_date": "11/16/2022"
+    }]
+    return render(request, "photos.html", {"photos": photos})
     pass
 
 def login_view(request):
-    pass
+    error_msg = ''
+    if request.method == 'POST' :
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(username=username, password=password)
+        if user :
+            login(request, user)
+            return HttpResponseRedirect(reverse('index'))
+        else :
+            error_msg = 'user is not correct'
+
+    return render(request, 'signup.html', {'form' : LoginForm, 'message' : error_msg})
+
 
 def logout_view(request):
-    pass
+    logout(request)
+    return HttpResponseRedirect(reverse('index'))
+
 
 def concerts(request):
-    pass
+    if request.user.is_authenticated:
+        list_of_concert = []
+        concert_objects = Concert.objects.all()
+        for concert in concert_objects:
+            try :
+                status = concert.attendee.filter(user=request.user).first().attending
+            except :
+                status = '-'
+            list_of_concert.append({
+                'concert' : concert,
+                'status' : status
+            })
+        return render(request, 'concerts.html', {'concerts' : list_of_concert})
+    else :
+        return HttpResponseRedirect(reverse('index'))
 
 
 def concert_detail(request, id):
